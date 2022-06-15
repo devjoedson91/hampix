@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Text, TouchableOpacity, Modal } from 'react-native';
+import { Text, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native"; // pegando os parametros da mesa aberta
 import { Feather } from '@expo/vector-icons';
 
@@ -22,6 +22,12 @@ import { api } from '../../services/api';
 
 import { ModalPicker } from '../../components/ModalPicker';
 
+import { ListItem } from '../../components/ListItem';
+
+import { NativeStackNavigationProp  } from "@react-navigation/native-stack"; 
+import { StackParamsList } from '../../routes/app.routes';
+import Routes from "../../routes";
+
 type RouteDetailParams = {
     Order: {
         number: string | number;
@@ -36,20 +42,49 @@ export type CategoryProps = {
 
 }
 
+type ProductProps = {
+
+    id: string;
+    name: string;
+
+}
+
+type ItemProps = {
+    id: string;
+    product_id: string;
+    name: string;
+    amount: string | number;
+}
+
 type OrderRouteProps = RouteProp<RouteDetailParams, 'Order'>;
 
 export default function Order() {
 
     const route = useRoute<OrderRouteProps>();
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<StackParamsList>>();
+
+    // criando os states para as categorias
 
     const [category, setCategory] = useState<CategoryProps[] | []>([]); // useState para armazenar as categorias
 
-    const [categorySelected, setCategorySelected] = useState<CategoryProps>(); // useState pra guardar a selecionada
+    const [categorySelected, setCategorySelected] = useState<CategoryProps | undefined>(); // useState pra guardar a selecionada
+
+    const [modalCategoryVisible, setModalCategoryVisible] = useState(false); // state para informar se o modal esta aberto ou fechado
+
+    // criando os states para os produtos
+
+    const [products, setProducts] = useState<ProductProps[] | []>([]);
+
+    const [productSelected, setProductSelected] = useState<ProductProps | undefined>();
+
+    const [modalProductVisible, setModalProductVisible] = useState(false);
+
+    // criando os states dos itens
 
     const [amount, setAmount] = useState('1'); // guardando a qtd que o usuario informar
 
-    const [modalCategoryVisible, setModalCategoryVisible] = useState(false); // state para informar se o modal esta aberto ou fechado
+    const [items, setItems] = useState<ItemProps[]>([]);
+
 
     // buscando as categorias
 
@@ -67,6 +102,25 @@ export default function Order() {
         loadInfo();
 
     }, []);
+
+    // buscando os produtos de acordo com a categoria
+
+    useEffect(() => {
+
+        async function loadProducts() {
+
+            const response = await api.get('/category/product', { 
+                params: { category_id: categorySelected?.id}
+            })
+
+            setProducts(response.data);
+            setProductSelected(response.data[0]);
+
+        }
+
+        loadProducts();
+
+    }, [categorySelected]);
 
     async function handleCloseOrder() {
 
@@ -89,14 +143,78 @@ export default function Order() {
 
     }
 
+    function handleChangeProduct(item: ProductProps) {
+
+        setProductSelected(item);
+
+    }
+
+    // adicionando um item ao pedido
+
+    async function handleAddItem() {
+
+        const response = await api.post('/order/add', {
+
+            order_id: route.params?.order_id,
+            product_id: productSelected?.id,
+            amount: Number(amount)
+
+        })
+
+        let data = {
+            id: response.data.id,
+            product_id: productSelected?.id as string,
+            name: productSelected?.name as string,
+            amount: amount
+        }
+
+        setItems(oldArray => [...oldArray, data]);
+
+    }
+
+    // excluindo item da order
+
+    async function handleDeleteItem(item_id: string) {
+
+        await api.delete('order/remove', {
+
+            params: { item_id: item_id }
+
+        });
+
+        // apos remover da api, removemos esse item da lista
+
+        let removeItem = items.filter(item => {
+
+            return (item.id !== item_id);
+
+        });
+
+        setItems(removeItem);
+
+    }
+
+    function handleFinishOrder() {
+
+        navigation.navigate('FinishOrder', {
+
+            number: route.params?.number,
+            order_id: route.params?.order_id
+
+        });
+
+    }
+
     return (
 
         <OrderContainer>
             <Header>
                 <Title>Mesa {route.params.number}</Title>
-                <TouchableOpacity onPress={handleCloseOrder}>
-                    <Feather name="trash-2" size={28} color='#ff3f4b' />
-                </TouchableOpacity>
+                {items.length === 0 && ( 
+                    <TouchableOpacity onPress={handleCloseOrder}>
+                        <Feather name="trash-2" size={28} color='#ff3f4b' />
+                    </TouchableOpacity> )
+                }
             </Header>
 
             {category.length !== 0 && (
@@ -109,9 +227,13 @@ export default function Order() {
 
             )}
 
-            <InputProduct>
-                <Text style={{color: '#fff'}}>Pizza de calabresa</Text>
-            </InputProduct>
+            {products.length !== 0 && (
+
+                <InputProduct onPress={() => setModalProductVisible(true)}>
+                    <Text style={{color: '#fff'}}>{productSelected?.name}</Text>
+                </InputProduct>
+
+            )}
 
             <QtdContainer>
                 <QtdText>Quantidade</QtdText>
@@ -124,13 +246,21 @@ export default function Order() {
             </QtdContainer>
 
             <ActionsContainer>
-                <ButtonAdd>
+                <ButtonAdd onPress={handleAddItem}>
                     <ActionsText>+</ActionsText>
                 </ButtonAdd>
-                <ButtonGo>
+                <ButtonGo disabled={items.length === 0} onPress={handleFinishOrder}>
                     <ActionsText>Avançar</ActionsText>
                 </ButtonGo>
             </ActionsContainer>
+
+            <FlatList 
+                showsVerticalScrollIndicator={false}
+                style={{flex: 1, marginTop: 24}}
+                data={items}
+                keyExtractor={(item) => item.id}
+                renderItem={({item}) => <ListItem data={item} deleteItem={handleDeleteItem} />}
+            />
 
             <Modal 
                 transparent={true}
@@ -142,6 +272,19 @@ export default function Order() {
                     options={category}
                     selectedItem={handleChangeCategory}
                 />
+            </Modal>
+
+            <Modal
+                transparent={true}
+                visible={modalProductVisible}
+                animationType='fade'
+            >
+                <ModalPicker 
+                    handleCloseModal={() => setModalProductVisible(false)}
+                    options={products}
+                    selectedItem={handleChangeProduct}
+                />
+
             </Modal>
 
             
