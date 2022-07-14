@@ -26,11 +26,12 @@ import { ListItem } from '../../components/ListItem';
 
 import { NativeStackNavigationProp  } from "@react-navigation/native-stack"; 
 import { StackParamsList } from '../../routes/app.routes';
-import Routes from "../../routes";
+
 
 type RouteDetailParams = {
     Order: {
         number: string | number;
+        isDelivery: boolean;
         order_id: string;
     }
 }
@@ -126,7 +127,11 @@ export default function Order() {
 
         try {
 
-            await api.delete('/order', { params: { order_id: route.params?.order_id }})
+            await api.delete('/order', { 
+                params: { 
+                    order_id: route.params?.order_id 
+                }
+            })
 
             navigation.goBack();
 
@@ -199,7 +204,8 @@ export default function Order() {
         navigation.navigate('FinishOrder', {
 
             number: route.params?.number,
-            order_id: route.params?.order_id
+            isDelivery: route.params?.isDelivery,
+            order_id: route.params?.order_id,
 
         });
 
@@ -209,7 +215,7 @@ export default function Order() {
 
         <OrderContainer>
             <Header>
-                <Title>Mesa {route.params.number}</Title>
+                <Title>{route.params?.isDelivery ? 'Delivery' : 'Mesa'} {route.params?.number}</Title>
                 {items.length === 0 && ( 
                     <TouchableOpacity onPress={handleCloseOrder}>
                         <Feather name="trash-2" size={28} color='#ff3f4b' />

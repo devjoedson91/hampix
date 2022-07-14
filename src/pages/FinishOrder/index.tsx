@@ -14,6 +14,7 @@ type RouteDetailParams = {
 
     FinishOrder: {
         number: string | number;
+        isDelivery: boolean;
         order_id: string;
     }
 
@@ -49,7 +50,7 @@ export default function FinishOrder() {
 
         <Container>
             <Alert>Voce deseja finalizar esse pedido?</Alert>
-            <Title>Mesa {route.params?.number}</Title>
+            <Title>{route.params?.isDelivery ? 'Pedido para entrega' : 'Mesa'} {route.params?.number}</Title>
 
             <Button onPress={handleFinish}>
                 <TextButton>Finalizar Pedido</TextButton>

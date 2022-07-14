@@ -33,6 +33,21 @@ export const AreaInput = styled.TextInput`
     text-align: center;
     font-size: 22px;
     color: #fff;
+    display: ${props => props.showInput ? 'none' : 'flex'};
+
+`;
+
+export const AreaInputName = styled.TextInput`
+
+    width: 90%;
+    height: 60px;
+    background-color: #101026;
+    border-radius: 4px;
+    padding-left: 8px;
+    text-align: center;
+    font-size: 22px;
+    color: #fff;
+    display: ${props => props.showInput ? 'flex' : 'none'};
 
 `;
 
@@ -50,6 +65,21 @@ export const ButtonText = styled.Text`
     font-size: 18px;
     color: #101026;
     font-weight: bold;
+
+`;
+
+export const TextSelect = styled.Text`
+
+    font-size: 18px;
+    color: #fff;
+
+`;
+
+export const AreaSelect = styled.View`
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 
 `;
 
